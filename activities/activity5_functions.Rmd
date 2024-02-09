@@ -40,11 +40,16 @@ Write a function called `count_name` that, when given a name as an argument, ret
 
 ```{r, eval= FALSE}
 data(babynames) # this will explicitly ask R to load the babynames dataset to your environment
-count_name <- function(name){
-  # your code here
+count_name <- function(x){
+  n <- n(x)
 }
+
+
 ```
 
+```{r}
+count_name(x=babynames$name)
+```
 
 ## Problem 2 (Medium): 
 
