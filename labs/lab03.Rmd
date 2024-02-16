@@ -1,6 +1,6 @@
 ---
 title: "Lab 3"
-#author: "Insert Name"
+author: "Sydney Stitt"
 date: "Math 241, Week 3"
 output:
   pdf_document
@@ -59,11 +59,13 @@ ht <- head(pdxTrees$Tree_Height, n = 15)
 ```
 
 a. What are the classes of `dats`, `pdxTreesSmall` and `ht`?
+
 `dats` is a list, 
 `pdxTreesSmall` is a dataframe. 
 `ht` is numeric.
 
 b. Find the 10th, 11th, and 12th values of `ht`.
+
 The 10th value of `ht` is 112.
 The 11th value of `ht` is 112.
 The 12th value of `ht` is 48.
@@ -116,12 +118,13 @@ thing6 <- thing2 + thing4*thing3
 ```
 
 ```{r}
-confidence_interval <- function(x) {
-  stopifnot(is.numeric(x))
+# Confidence interval function
+confidence_interval <- function(x, ci) {
+  if (is.numeric(x) && is.numeric(ci)) {
   sample_size <- length(x)
   avg <- mean(x)
   standard_error <- sd(x)/sqrt(sample_size)
-  t_score <- qt(p = .975, df = sample_size - 1)
+  t_score <- qt(p = ci, df = sample_size - 1)
   ci_lower_limit <- avg - t_score*standard_error
   ci_upper_limit <- avg + t_score*standard_error
   return(list(sample_size = sample_size,
@@ -130,8 +133,12 @@ confidence_interval <- function(x) {
               t_score = t_score,
               ci_lower_limit = ci_lower_limit,
               ci_upper_limit = ci_upper_limit))
+  }
+  else {
+    stop("x and ci must be a numeric vector, not a character vector")
+  }
 }
-confidence_interval(pdxTrees$DBH)
+confidence_interval(pdxTrees$DBH, 0.975)
 ```
 
 
@@ -148,14 +155,14 @@ ggplot(data = pdxTrees, mapping = aes(x = DBH)) +
   geom_histogram()
 
 # Shorthand histogram function
-histo <- function(data, x){
+histo_function <- function(data, x){
    x <- enquo(x)
   ggplot(data = data, mapping = aes(x = !!x)) +
     geom_histogram()
 }
 
-# Test it
-histo(pdxTrees, DBH)
+# Testing histo function
+histo_function(pdxTrees, DBH)
 ```
 
 a. Edit `histo()` so that the user can set 
@@ -165,26 +172,77 @@ a. Edit `histo()` so that the user can set
 * The color outlining the bars
 
 ```{r}
-histo <- function(data, x, fill, color){
+# Edited version of histo function
+histo_function <- function(data, x, bins = 30, fill_color = "blue", outline_color = "black"){
    x <- enquo(x)
-   fill <- enquo(fill)
-  ggplot(data = data, mapping = aes(x = !!x, fill = !!fill)) +
-    geom_histogram(border = "color")
+  ggplot(data = data, mapping = aes(x = !!x)) +
+    geom_histogram(bins = bins, fill = fill_color, color = outline_color)
 }
 
-# Test it
-histo(pdxTrees, DBH, Collected_By, blue)
+# Testing histo function
+histo_function(pdxTrees, DBH, bins = 20, fill_color="green", outline_color="red")
 ```
 
 b. Write code to create a basic scatterplot with `ggplot2`. Then write and test a function to create a basic scatterplot.
+
+```{r}
+# Basic scatterplot code
+ggplot(data = pdxTrees, aes(x = Tree_Height, y = Carbon_Storage_value)) +
+  geom_point()
+```
+
+```{r}
+# Function for basic scatterplot
+scatter_function <- function(data, x, y){
+   x <- enquo(x)
+   y <- enquo(y)
+  ggplot(data = data, mapping = aes(x = !!x, y = !!y)) +
+    geom_point()
+}
+
+# Testing scatter function
+scatter_function(pdxTrees, Tree_Height, Carbon_Storage_value)
+```
+
 
 c. Modify your scatterplot function to allow the user to ...
 
 * Color the points by another variable.
 * Set the transparency.
 
-d. Write and test a function for your favorite `ggplot2` graph.
+```{r}
+# Function for basic scatterplot
+scatter_function <- function(data, x, y, alpha = 0.5, color = Condition){
+   x <- enquo(x)
+   y <- enquo(y)
+   color <- enquo(color)
+  ggplot(data = data, mapping = aes(x = !!x, y = !!y, color = !!color)) +
+    geom_point(alpha = alpha)
+}
 
+# Testing scatter function
+scatter_function(pdxTrees, Tree_Height, Carbon_Storage_value, alpha = 0.9, color = Native)
+```
+
+d. Write and test a function for your favorite `ggplot2` graph.
+```{r}
+# Basic violin plot code
+ggplot(data = pdxTrees, aes(x = Condition, y = Carbon_Storage_lb)) +
+  geom_violin()
+```
+
+```{r}
+# Function for basic violin plot
+violin_function <- function(data, x, y){
+   x <- enquo(x)
+   y <- enquo(y)
+  ggplot(data = data, mapping = aes(x = !!x, y = !!y)) +
+    geom_violin()
+}
+
+#Testing violin function
+violin_function(pdxTrees, Condition, Carbon_Storage_lb)
+```
 
 ### Problem 4: Functioning `dplyr`
 
@@ -199,32 +257,65 @@ pdxTrees %>%
   ungroup()
 ```
 
+
 ```{r}
-prop_trees <- function(x) {
-  pdxTrees %>% 
-  count(Native, Condition) %>%
-  group_by(Native) %>%
-  mutate(prop = x/sum(x)) %>%
+# Creating the conditional_prop_table function
+conditional_prop_table <- function(data, var1, var2) {
+  data %>% 
+  count(!!enquo(var1), !!enquo(var2)) %>%
+  group_by(!!enquo(var1)) %>%
+  mutate(prop = n, na.rm = TRUE/sum(n, na.rm = TRUE)) %>%
   ungroup()
-  return(list(prop = prop))
   }
 
-
-prop_trees(pdxTrees$n)
+# Testing the conditional_prop_table function 
+result_conditional_function <- conditional_prop_table(pdxTrees, Native, Condition)
+print(result_conditional_function)
 ```
 
 b.  Write a function to compute the mean, median, sd, min, max, sample size, and number of missing values of a quantitative variable by the categories of another variable.  Make sure the output is a data frame (or tibble).  Don't forget to test your function.
 
+```{r}
+# Creating the summarize_function
+summarize_function <- function(data, var1, var2) {
+  var2 <- enquo(var2)
+  var1 <- enquo(var1)
+  data %>%
+  group_by(!!var1) %>%
+  summarize(avg <- mean(!!var2,na.rm = TRUE),
+            median <- median(!!var2,na.rm = TRUE),
+            sd <- sd(!!var2,na.rm = TRUE),
+            min <- min(!!var2,na.rm = TRUE),
+            max <- max(!!var2,na.rm = TRUE),
+            sample_size <- length(!!var2),
+            missing <- sum(is.na(!!var2)))
+}
+
+# Testing the summarize_function with Condition and Tree_Height variables
+summarize_function(pdxTrees, Condition, Tree_Height)
+```
 
 ### Problem 5: another `babynames` exercise
 
 Write a function called grab_name that, when given a **name** ***and a year*** as an argument, returns the rows from the `babynames` data frame in the `babynames` package that match that name for that year (and returns an error if that name and year combination does not match any rows). Run the function once with the arguments **Ezekiel and 1883** and once with **Ezekiel and 1983**.
 
-```{r, eval=FALSE}
-#' Make sure to switch eval = FALSE to eval = TRUE before knitting!!
-
+```{r, eval=TRUE}
+# Creating the grab_name function
 grab_name <- function(myname, myyear) {
-  # Code your function here
+if (is.element(myname, babynames$name) && is.element(myyear, babynames$year)) { 
+  babynames %>%
+  filter(name == myname) %>%
+  filter(year ==  myyear) %>%
+  return()
+    }
+  else {
+    stop("Name and year combination not found in dataset")
+  }
 }
 
+#Testing the grab_name function with Ezekiel and 1883 and Ezekiel and 1983
+ezekiel_1883 <- grab_name("Ezekiel", "1883")
+ezekiel_1983 <- grab_name("Ezekiel", "1983")
+print(ezekiel_1883)
+print(ezekiel_1983)
 ```
