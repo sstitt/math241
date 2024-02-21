@@ -35,7 +35,7 @@ In order to directly download data from the Census API, you need a key. You can 
 Type your key in quotes using the `census_api_key()` command
 
 ```{r, eval = F}
-census_api_key("YOUR API KEY GOES HERE", install = TRUE)
+census_api_key("8e0f216f5b912c97f5f2332f72e25119c7d2de06", install = TRUE)
 ```
 
 
@@ -128,7 +128,16 @@ or_county %>%
 We can create new variables using the `mutate()` function. For example, you can create a variable for the percentage of the population that is white for each county in Oregon, and map it.
 
 ```{r, eval = FALSE}
+or_county <- or_county %>%
+  mutate(white_prop = white_popE / total_popE)
 
+or_county %>%
+  st_as_sf() %>%
+  ggplot() +
+  geom_sf(aes(fill = white_prop)) +
+  scale_fill_viridis_c() +
+  labs(fill = "Proportion of Population that is White") +
+  theme_void()
 ```
 
 ## Census tracts
@@ -169,7 +178,7 @@ mutlnomah_tracts <- get_acs(geography = "tract",
 Look at the data to see if it contains only Multnomah county tracts.
 
 ```{r}
-
+glimpse(mutlnomah_tracts)
 ```
 
 
@@ -177,6 +186,92 @@ Look at the data to see if it contains only Multnomah county tracts.
 
 Let's look at housing values `B25077_001`. Choose your county of birth (or any county you like) and all its adjacent counties. Create a visualization of the distribution of the median home values by census tract, for each county, using the most recent ACS data available (probably 2022).
 
+```{r}
+santa_clara_housing <- get_acs(geography = "tract",
+                          year = 2022,
+                          variables = c(housing = "B25077_001"),               
+                          state = "CA",
+                          county = "Santa Clara",
+                          survey = "acs5",
+                          output = "wide")
+san_mateo_county <- get_acs(geography = "tract",
+                          year = 2022,
+                          variables = c(housing = "B25077_001"),               
+                          state = "CA",
+                          county = "San Mateo",
+                          survey = "acs5",
+                          output = "wide")
+alameda_housing <- get_acs(geography = "tract",
+                          year = 2022,
+                          variables = c(housing = "B25077_001"),               
+                          state = "CA",
+                          county = "Alameda",
+                          survey = "acs5",
+                          output = "wide")
+contra_costa_housing <- get_acs(geography = "tract",
+                          year = 2022,
+                          variables = c(housing = "B25077_001"),               
+                          state = "CA",
+                          county = "Contra Costa",
+                          survey = "acs5",
+                          output = "wide")
+marin_housing <- get_acs(geography = "tract",
+                          year = 2022,
+                          variables = c(housing = "B25077_001"),               
+                          state = "CA",
+                          county = "Marin",
+                          survey = "acs5",
+                          output = "wide")
+san_francisco_housing <- get_acs(geography = "tract",
+                          year = 2022,
+                          variables = c(housing = "B25077_001"),               
+                          state = "CA",
+                          county = "San Francisco",
+                          survey = "acs5",
+                          output = "wide")
+sonoma_housing <- get_acs(geography = "tract",
+                          year = 2022,
+                          variables = c(housing = "B25077_001"),               
+                          state = "CA",
+                          county = "Sonoma",
+                          survey = "acs5",
+                          output = "wide")
+napa_housing <- get_acs(geography = "tract",
+                          year = 2022,
+                          variables = c(housing = "B25077_001"),               
+                          state = "CA",
+                          county = "Napa",
+                          survey = "acs5",
+                          output = "wide")
+solano_housing <- get_acs(geography = "tract",
+                          year = 2022,
+                          variables = c(housing = "B25077_001"),               
+                          state = "CA",
+                          county = "solano",
+                          survey = "acs5",
+                          output = "wide")
+ca_county <- full_join(santa_clara_housing, san_mateo_county)
+ca_county <- full_join(ca_county, alameda_housing)
+ca_county <- full_join(ca_county, contra_costa_housing)
+ca_county <- full_join(ca_county, marin_housing)
+ca_county <- full_join(ca_county, san_francisco_housing)
+ca_county <- full_join(ca_county, sonoma_housing)
+ca_county <- full_join(ca_county, napa_housing)
+ca_county <- full_join(ca_county, solano_housing)
+```
+
+```{r}
+ca_sf <- tracts(state = "CA", cb = TRUE)
+ca_county <- left_join(ca_county, ca_sf, by = c("GEOID" = "GEOID"))
+
+ca_county %>%
+  st_as_sf() %>%
+  ggplot() +
+  geom_sf(aes(fill = housingE)) +
+  scale_fill_viridis_c() +
+  labs(fill = "Median Home Values of Bay Area Tracts (in USD)") +
+  theme_void()
+```
 
 
 ## Next steps
