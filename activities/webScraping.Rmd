@@ -39,6 +39,14 @@ champ_table
 
 Using the same approach, grab the table of Portland's population over time (table 4), and create a simple visualization of the total population count over time.
 
+```{r}
+population_table <- html_table(tables[[4]], fill = TRUE)
+population_table
+population_table <- population_table %>% mutate(Pop. = recode(Pop., "2,874" = "2874", "8,293" = "8293", "17,577" = "17577", "46,385" = "46385", "90,426" = "90426", "207,214" = "207214", "258,288" = "258288", "301,815" = "301815", "305,394" = "305394", "373,628" = "373628", "372,676" = "372676", "382,619" = "382619", "366,383" = "366383", "437,319" = "437319", "529,121" = "529121", "583,776" = "583776", "652,503" = "652503", "635,067" = "635067"))
+
+ggplot(population_table, aes(x = Census, y = Pop.)) +
+  geom_point()
+```
 
 # Another Example
 
