@@ -1,6 +1,6 @@
 ---
 title: "Lab 5"
-#author: "Insert Name"
+author: "Sydney Stitt"
 date: "Math 241, Week 6"
 output:
   pdf_document
