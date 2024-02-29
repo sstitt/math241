@@ -20,9 +20,14 @@ The goal of this exercise is to use our skills to get data from online, transfor
 
 * Get the data about rides in January, July, and November of 2017, and **bind** them into a single data frame using `bind_rows`:
 
+```{r}
+bk_jan <- readr::read_csv("https://s3.amazonaws.com/biketown-tripdata-public/2017_01.csv")
+bk_jul <- readr::read_csv("https://s3.amazonaws.com/biketown-tripdata-public/2017_07.csv")
+bk_nov <- readr::read_csv("https://s3.amazonaws.com/biketown-tripdata-public/2017_11.csv")
+```
+
 (Hint: use the `readr::read_csv` function to directly read the csv from the url pointing to the data)
 ```{r, eval = F}
-
 biketown_data <- bind_rows(bk_jan, bk_jul, bk_nov) %>%
   select(StartDate, StartTime, EndDate, EndTime, Distance_Miles,
          BikeID)
@@ -35,13 +40,21 @@ biketown_data <- bind_rows(bk_jan, bk_jul, bk_nov) %>%
 ```{r, eval = F, fig.width = 12, fig.height = 8}
 
 biketown_dt <- biketown_data %>%
-  mutate()%>%
-  filter(Distance_Miles < 10) # filter for outlying trips!
+  mutate(StartDate = mdy(StartDate),
+         EndDate = mdy(EndDate)) %>%
+  mutate(StartDateTime = ymd_hms(paste(StartDate, StartTime, sep = " ")),
+         EndDateTime = ymd_hms(paste(EndDate, EndTime, sep = " "))) %>%
+  mutate(DayOfWeek = wday(StartDate, label = TRUE)) %>% 
+  mutate(Month = month(StartDate)) %>%
+  filter(Distance_Miles < 10) %>%
+  mutate(Month = recode(Month, "1" = "Jan", 
+                             "7" = "Jul", 
+                             "11" = "Nov"))
 
 biketown_dt %>%
-  ggplot(aes(y =..., x = Distance_Miles, fill = ...)) +
+  ggplot(aes(y = DayOfWeek, x = Distance_Miles, fill = DayOfWeek)) +
   geom_density_ridges(scale = 4) +
-  facet_wrap(~ ..., nrow = 3) +
+  facet_wrap(~Month, nrow = 3) +
   labs(x = 'Distance (Miles)', y = 'Day of the week') +
   theme_ridges() +
   theme(legend.position = 'none')
