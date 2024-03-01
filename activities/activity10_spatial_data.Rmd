@@ -33,7 +33,7 @@ library(RColorBrewer)
 
 ```{r, eval = F}
 # Load in your Census API key (replace YOUR_API_KEY with your actual key)
-census_api_key("YOUR_API_KEY", install = TRUE)
+census_api_key("8e0f216f5b912c97f5f2332f72e25119c7d2de06", install = TRUE)
 ```
 
 ## Retrieving Spatial Data for Multnomah County, OR
@@ -358,14 +358,90 @@ tm_shape(pdx_tracts) +
 1. Using `tidycensus`, bring in 2018-2022 total, non-Hispanic white, non-Hispanic black, non-Hispanic Asian, and Hispanic populations for census tracts in your birth county or your county of choice! Check Activity for the appropriate variable IDs.
 Make sure to bring in spatial data by using geometry = TRUE. Also make sure to clean the data. 
 
+```{r}
+scc_18_22 <- get_acs(geography = "tract",
+                     year = 2022,
+                     variables = c(total_pop = "B03002_001", 
+                                   white_pop = "B03002_003", 
+                                   black_pop = "B03002_004", 
+                                   asian_pop = "B03002_006", 
+                                   hisp_pop = "B03002_012"),
+                     state = "CA",
+                     county = "Santa Clara",
+                     survey = "acs5",
+                     output = "wide",
+                     geometry = TRUE)
+```
+
 2. Calculate the percent Asian, White, Black and Hispanic variables.
+```{r}
+scc_18_22 <- scc_18_22 %>%
+  mutate(perc_asian = asian_popE/total_popE,
+         perc_white = white_popE/total_popE,
+         perc_black = black_popE/total_popE,
+         perc_hisp = hisp_popE/total_popE)
+```
+
+
 
 3. Create static presentation-ready maps of percent non-Hispanic black, non-Hispanic white, non-Hispanic Asian, and Hispanic using quantile breaks.
 
+```{r}
+tm_shape(scc_18_22) +
+  tm_polygons(col = "perc_asian", style = "quantile", palette = "BuGn", title = "Percentage of Non-Hispanic Asian") +
+  tm_layout(main.title = "Percentage of Non-Hispanic Asian Population \nin Santa Clara County, 2018-2022",
+            main.title.position = "center",
+            legend.outside = TRUE)
+```
+```{r}
+tm_shape(scc_18_22) +
+  tm_polygons(col = "perc_white", style = "quantile", palette = "BuGn", title = "Percentage of Non-Hispanic White") +
+  tm_layout(main.title = "Percentage of Non-Hispanic White Population \nin Santa Clara County, 2018-2022",
+            main.title.position = "center",
+            legend.outside = TRUE)
+```
+```{r}
+tm_shape(scc_18_22) +
+  tm_polygons(col = "perc_black", style = "quantile", palette = "BuGn", title = "Percentage of Non-Hispanic Asian") +
+  tm_layout(main.title = "Percentage of Non-Hispanic Black Population \nin Santa Clara County, 2018-2022",
+            main.title.position = "center",
+            legend.outside = TRUE)
+```
+
+```{r}
+tm_shape(scc_18_22) +
+  tm_polygons(col = "perc_hisp", style = "quantile", palette = "BuGn", title = "Percentage of Hispanic") +
+  tm_layout(main.title = "Percentage of Hispanic Population \nin Santa Clara County, 2018-2022",
+            main.title.position = "center",
+            legend.outside = TRUE)
+```
 4. Bring in another variable from the ACS 2018-2022 that you would be interested in investigating in relationship to race/ethnicity. This could be median housing value (`B25077_001`), median household income (`B19013_001`), proportion of foreign born individuals (`B05012_003`), or commuting using public transportation (`DP03_0021P`), to name a few variables that we have already encountered. You can also use the `load_variables` function to get the variable IDs of other variables you would be interested in.
+
+```{r}
+scc_hh_income_18_22 <- get_acs(geography = "tract",
+                     year = 2022,
+                     variables = c(median_hh_income = "B19013_001",
+                                   total_pop = "B03002_001", 
+                                   white_pop = "B03002_003", 
+                                   black_pop = "B03002_004", 
+                                   asian_pop = "B03002_006", 
+                                   hisp_pop = "B03002_012"), 
+                     state = "CA",
+                     county = "Santa Clara",
+                     survey = "acs5",
+                     output = "wide",
+                     geometry = TRUE)
+```
 
 5. Create a static presentation-ready map of the variable you selected.
 
+```{r}
+tm_shape(scc_hh_income_18_22) +
+  tm_polygons(col = "median_hh_incomeE", style = "quantile", palette = "BuGn", title = "Median Household Income") +
+  tm_layout(main.title = "Median Household Income \nin Santa Clara County, 2018-2022",
+            main.title.position = "center",
+            legend.outside = TRUE)
+```
+
 6. Based on a visual comparison of the maps you created in (3) and (5), summarize in your own words the association between racial/ethnic composition and your variable of interest.
-
-
+Census tracks with large Hispanic and Black populations tend to have lower median household incomes than census tracks with large Asian and White populations. Thus, affluence and income may be influenced by racial demographics.
