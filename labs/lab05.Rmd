@@ -10,8 +10,6 @@ urlcolor: blue
 ```{r setup, include=FALSE}
 # Do not modify this chunk.
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
-
-
 ```
 
 ```{r}
@@ -20,6 +18,9 @@ library(tidyverse)
 library(rnoaa)
 library(rvest)
 library(httr)
+library(dplyr)
+library(ggplot2)
+library(knitr)
 ```
 
 
@@ -49,8 +50,8 @@ library(rnoaa)
 
 a. First things first, go to [this NOAA website](https://www.ncdc.noaa.gov/cdo-web/token) to get a key emailed to you.  Then insert your key below:
 
-```{r, eval = FALSE}
-options(noaakey = "INSERT KEY")
+```{r}
+options(noaakey = "olfVllAdvgxTnItbErwMcSJwVUCKtoVh")
 ```
 
 
@@ -63,36 +64,90 @@ stations <- ncdc_stations(datasetid = "GHCND",
 
 mult_stations <- stations$data
 ```
-
+There are 25 stations in Multonomah County
 
 
 c. January was not so rainy this year, was it?  Let's grab the precipitation data for site `GHCND:US1ORMT0006` for this past January.
 
-```{r, eval = FALSE}
-# First fill-in and run to following to determine the
-# datatypeid
+```{r}
+#Grabbing data
 ncdc_datatypes(datasetid = "GHCND",
-               stationid = "")
-
-# Now grab the data using ncdc()
-precip_se_pdx <- ncdc()
+               stationid = "GHCND:US1ORMT0006")
+precip_se_pdx <- ncdc(datasetid = "GHCND",
+                      stationid = "GHCND:US1ORMT0006",
+                      datatypeid = "PRCP",
+                      startdate = "2023-01-01",
+                      enddate = "2023-01-31")
+precip_se_pdx
 ```
 
-d.  What is the class of `precip_se_dpx`?  Grab the data frame nested in `precip_se_dpx` and call it `precip_se_dpx_data`.
-
+d.  What is the class of `precip_se_pdx`?  Grab the data frame nested in `precip_se_pdx` and call it `precip_se_pdx_data`.
+Precip_se_pdx is a character list
+```{r}
+#Grabbing df nested in precip_se_pdx
+precip_se_pdx_data <- precip_se_pdx[[2]]
+```
 
 
 e. Use `ymd_hms()` in the package `lubridate` to wrangle the date column into the correct format.
-
+```{r}
+#Fixing the date column with lubridate
+precip_se_pdx_data <- precip_se_pdx_data %>%
+  mutate(fixeddate = ymd_hms(paste(date)))
+```
 
 
 f. Plot the precipitation data for this site in Portland over time.  Rumor has it that we had only one day where it didn't rain.  Is that true?
-
+```{r}
+#Graphing precipitation data for Jan 2023
+ggplot(precip_se_pdx_data, aes(x = fixeddate, y = value)) +
+  geom_point() +
+  labs(title = "Precipitation in Portland in January 2023", x = "Date")
+```
+That is not true -- there were five days that there was no rain in Portland.
 
 g. (Bonus) Adapt the code to create a visualization that compares the precipitation data for January over the the last four years.  Do you notice any trend over time?
 
+```{r}
+#Compiling data for precip for Januarys from 2020 to 2023
+precip_se_pdx_2020 <- ncdc(datasetid = "GHCND",
+                      stationid = "GHCND:US1ORMT0006",
+                      datatypeid = "PRCP",
+                      startdate = "2020-01-01",
+                      enddate = "2020-01-31")
+precip_se_pdx_2020_data <- precip_se_pdx_2020[[2]]
+precip_se_pdx_2020_data <- precip_se_pdx_2020_data %>%
+  mutate(fixeddate = ymd_hms(paste(date)))
+precip_se_pdx_2021 <- ncdc(datasetid = "GHCND",
+                      stationid = "GHCND:US1ORMT0006",
+                      datatypeid = "PRCP",
+                      startdate = "2021-01-01",
+                      enddate = "2021-01-31")
+precip_se_pdx_2021_data <- precip_se_pdx_2021[[2]]
+precip_se_pdx_2021_data <- precip_se_pdx_2021_data %>%
+  mutate(fixeddate = ymd_hms(paste(date)))
+precip_se_pdx_2022 <- ncdc(datasetid = "GHCND",
+                      stationid = "GHCND:US1ORMT0006",
+                      datatypeid = "PRCP",
+                      startdate = "2022-01-01",
+                      enddate = "2022-01-31")
+precip_se_pdx_2022_data <- precip_se_pdx_2022[[2]]
+precip_se_pdx_2022_data <- precip_se_pdx_2022_data %>%
+  mutate(fixeddate = ymd_hms(paste(date)))
+precip_se_pdx_20_23 <- full_join(precip_se_pdx_2020_data, precip_se_pdx_2021_data)
+precip_se_pdx_20_23 <- full_join(precip_se_pdx_20_23, precip_se_pdx_2022_data)
+precip_se_pdx_20_23 <- full_join(precip_se_pdx_20_23, precip_se_pdx_data)
+precip_se_pdx_20_23 <- precip_se_pdx_20_23 %>%
+  mutate(year = year(paste(fixeddate))) %>%
+  mutate(mday = mday(paste(fixeddate)))
 
-
+#Graphing Januarys precip data
+ggplot(precip_se_pdx_20_23, aes(x = mday, y = value)) +
+  geom_point() +
+  facet_wrap(~year) +
+  labs(title = "Comparing Precipitation in Portland in January of 2020-2023", x = "Date")
+```
+Precipitation trends in January have become less variable and more consistent in the past four years.
 
 ## Problem 2: From API to R 
 
@@ -108,32 +163,110 @@ Here are some potential API wrapper packages.  Feel free to use one not included
 * [`rfishbase`](https://github.com/ropensci/rfishbase): For the fish lovers
 * [`darksky`](https://github.com/hrbrmstr/darksky): For global historical and current weather conditions
 
+```{r}
+#Setting Up spotifyr API wrapper package
+install.packages("spotifyr", repos = "http://cran.us.r-project.org")
+library(spotifyr)
+id <- "8f3663c9914e495c8bf3a9260fb29a49"
+secret <- "1919190aa1c74e6cbb09245c1d19741a"
+Sys.setenv(SPOTIFY_CLIENT_ID = id)
+Sys.setenv(SPOTIFY_CLIENT_SECRET = secret)
+access_token <- get_spotify_access_token()
+```
 
+```{r}
+#Wrangling data for Taylor Swift's discography
+tswift <- get_artist_audio_features("taylor swift")
+tswift_wrangled <- tswift %>%
+  filter(album_name == "Speak Now (Taylor's Version)" |
+         album_name == "1989 (Taylor's Version) [Deluxe]" |
+         album_name == "Midnights (The Til Dawn Edition)" |
+         album_name == "Red (Taylor's Version)" |
+         album_name == "Fearless (Taylor's Version)" |
+         album_name == "evermore (deluxe version)" |
+         album_name == "folklore (deluxe version)" |
+         album_name == "Lover" |
+         album_name == "reputation" |
+         album_name == "Taylor Swift") %>%
+  group_by(album_name) %>%
+  mutate(avg_dance = mean(danceability))
+```
+
+```{r}
+#Graphing Taylor Swift's data 
+ggplot(tswift_wrangled, aes(x = danceability, y = album_name)) + 
+  geom_violin(fill = "#EAC3EE",
+              color = "#96709A") +
+  scale_y_discrete(limits=c("Taylor Swift", 
+                            "Fearless (Taylor's Version)", 
+                            "Speak Now (Taylor's Version)", 
+                            "Red (Taylor's Version)", 
+                            "1989 (Taylor's Version) [Deluxe]", 
+                            "reputation", 
+                            "Lover", 
+                            "folklore (deluxe version)", 
+                            "evermore (deluxe version)", 
+                            "Midnights (The Til Dawn Edition)")) +
+  labs(x = "Danceability Score", 
+       y = "Album", 
+       title = "Danceability Score Distribution for Taylor Swift Albums",
+       caption = "Danceability score index developed by Spotify. Data retrieved using spotifyr API wrapper.")
+```
+Taylor Swift's most danceable songs, according to Spotify's danceability score index, are on her albums "Lover" and "Midnights". Both albums also have the largest range of danceability socre. The most consistently danceable album is "reputation". In general, Taylor Swift's albums have a great range of danceability, and are not very homogenous. Her newer albums ("Lover", "folklore", "evermore", "Midnights") tend to contain songs that are very low in danceability score, showing that her music writing is becoming more variable, including less danceable songs, over time. 
 
 ## Problem 3: Scraping Reedie Data
 
 Let's see what lovely data we can pull from Reed's own website.  
 
 a. Go to [https://www.reed.edu/ir/success.html](https://www.reed.edu/ir/success.html) and scrape the two tables.
-
+```{r}
+#Grabbing data from Reed's website
+reed_url <- "https://www.reed.edu/ir/success.html"
+tables <- reed_url %>%
+  read_html() %>%
+  html_nodes(css = "table")
+```
 
 
 
 b. Grab and print out the table that is entitled "GRADUATE SCHOOLS MOST FREQUENTLY ATTENDED BY REED ALUMNI".  Why is this data frame not in a tidy format?
-
-
+```{r}
+#Grabbing the table from Reed's website data
+grad_school_table <- html_table(tables[[2]], fill = TRUE)
+print(grad_school_table)
+```
+This dataframe is not tidy because of the titles of the columns should be a variable itself (type of degree obtained)
 
 c. Wrangle the data into a tidy format. Glimpse the resulting data frame.
+```{r}
+#Tidying up Reed's table data
+grad_school_table <- grad_school_table %>%
+  pivot_longer(c("MBAs", "JDs", "PhDs", "MDs"), 
+               names_to = "Types of Degree", 
+               values_to = "Universities")
 
-
+glimpse(grad_school_table)
+```
 
 d. Now grab the "OCCUPATIONAL DISTRIBUTION OF ALUMNI" table and turn it into an appropriate graph.  What conclusions can we draw from the graph?
 
 ```{r}
-# Hint: Use `parse_number()` within `mutate()` to fix one of the columns
+#Tidying up occupations table data
+occupations_table <- html_table(tables[[1]], fill = TRUE)
+print(occupations_table)
+occupations_table <- occupations_table %>%
+  mutate(X2 = parse_number(X2))
+print(occupations_table)
+
+#Graphing occupations table data
+ggplot(occupations_table, aes(x = X1, y = X2)) +
+  geom_col() +
+  theme(axis.text.x = element_text(face = "bold", color = "#993333", 
+                           size = 6, angle = 45)) +
+  labs(x = "Occupation type", y = "Proportion of Alumni", title = "Occupational Distribution of Alumni")
 ```
 
-
+We can see that the majority of students go on to work in the business/industry and education work fields. We can also conclude that a large proportion of students are also self-employed.
 
 
 
@@ -143,16 +276,22 @@ Do the following to clean up the data:
 
 * Rename the column names.  
 
-```{r,eval = FALSE}
-# Hint
-colnames(___) <- c("name 1", "name 2", ...)
+```{r}
+#Tidying up Reed grad rate table
+reed_grad_url <- "https://www.reed.edu/ir/gradrateshist.html"
+grad_rate_data <- reed_grad_url %>%
+  read_html() %>%
+  html_nodes(css = "table")
+grad_rate_table <- html_table(grad_rate_data[[1]], fill = TRUE)
+colnames(grad_rate_table) <- c("Entering_Class_Year", "Cohort_Size", "4", "5", "6")
 ```
 
 * Remove any extraneous rows.
 
-```{r, eval = FALSE}
-# Hint
-filter(row_number() ...)
+```{r}
+#Tidying up Reed grad rate table
+grad_rate_table <- grad_rate_table %>%
+  filter(!row_number() %in% c(1))
 ```
 
 * Reshape the data so that there are columns for 
@@ -160,8 +299,30 @@ filter(row_number() ...)
     + Cohort size
     + Years to graduation
     + Graduation rate
+    
+```{r}
+#Pivoting data in Reed grad rate table
+grad_rate_table <- grad_rate_table %>%
+  pivot_longer(c("4", "5", "6"), 
+               names_to = "Years_to_Graduation", 
+               values_to = "Graduation_Rate") %>%
+  mutate(Graduation_Rate = parse_number(Graduation_Rate)) %>%
+  filter(!is.na(Graduation_Rate))
+```
 
 * Make sure each column has the correct class.    
 
 
 f. Create a graph comparing the graduation rates over time and draw some conclusions.
+```{r}
+#Graphing Reed grad rates over time
+ggplot(grad_rate_table, aes(x = Entering_Class_Year, y = Graduation_Rate)) +
+  geom_col() +
+  facet_wrap(~Years_to_Graduation, ncol = 1) +
+  scale_x_discrete(breaks=c(1982, 1984, 1986, 1988, 1990, 1992, 1994, 1996, 1998, 2000, 2002, 2004, 2006, 2008, 2010, 2012, 2014, 2016, 2018)) +
+  labs(title = "Reed College Graduation Rates by Years to Graduate",
+       x = "Entering Class Year", 
+       y = "Graduation Rate")
+```
+
+Graduation rates for students graduating in 4, 5 and 6 years have generally increased over time since 1982. In general, the graduation rate for students graduating in 5 and 6 years is higher than those graduating in 4 years. The graduation rate for students graduating in 4 years has seen the most significant increase. Thus, there may be factors that contribute to the increased graduation rates like increased student support services. 
