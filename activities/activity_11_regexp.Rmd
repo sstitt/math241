@@ -25,7 +25,12 @@ a. Find all of the adjectives in Macbeth that end in more or less
 
 ```{r}
 data(Macbeth_raw)
-
+macbeth <- Macbeth_raw %>%
+  str_split("\r\n") %>% # specify the end-of-line character(s)
+  pluck(1) # str_split returns a list of length 1
+# we grab its first element
+length(macbeth)
+str_subset(macbeth, "more or less")
 ```
 
 
