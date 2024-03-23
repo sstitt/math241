@@ -1,6 +1,6 @@
 ---
 title: "Lab 6"
-author: "Insert Name"
+author: "Sydney Stitt"
 date: "Math 241, Week 8"
 output:
   pdf_document
@@ -16,8 +16,11 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(leaflet)
 library(tidycensus)
+library(lubridate)
+library(sf)
+library(tigris)
+library(htmltools)
 ```
-
 
 
 ## Due: Friday, March 22nd at 8:30am
@@ -33,27 +36,158 @@ For this problem we will return to the biketown dataset.
 
 a. Grab the code from activity 9, Problem 1 to read the data directly from Biketown's API- make sure to keep the longitude and latitude of the start of each ride (`StartLatitude`, `StartLongitude`).
 
-b. Create an interactive map of the start point of the rides using the `leaflet` package.  Make sure to include a legend and a title.  What do you notice about the distribution of rides?
 ```{r}
-biketown_data %>% 
+bk_jan <- read.csv("https://s3.amazonaws.com/biketown-tripdata-public/2017_01.csv")
+bk_jul <- read.csv("https://s3.amazonaws.com/biketown-tripdata-public/2017_07.csv")
+bk_nov <- read.csv("https://s3.amazonaws.com/biketown-tripdata-public/2017_11.csv")
+combined_rides <- bind_rows(bk_jan, bk_jul, bk_nov)
+biketown_data <- bind_rows(bk_jan, bk_jul, bk_nov) %>%
+  select(StartDate, StartTime, EndDate, EndTime, Distance_Miles,
+         BikeID, StartLatitude, StartLongitude) 
+```
+
+b. Create an interactive map of the start point of the rides using the `leaflet` package.  Make sure to include a legend and a title.  What do you notice about the distribution of rides?
+
+The majority of rides are concentrated in north Portland, mostly on the west side of the river.
+
+```{r}
+#Making the map
+biketown_map <- biketown_data %>% 
   leaflet() %>%
   addTiles() %>%
   addCircleMarkers(lng = ~StartLongitude, lat = ~StartLatitude)
+
+#adding title and legend
+title_bike <- tags$div(
+  style = "position: absolute; top: 10px; left: 10px; z-index: 1000;",
+  "Map of Starting Location of Biketown Rides in Portland in January, July, and November 2017"
+)
+biketown_map <- htmlwidgets::prependContent(biketown_map, title_bike) 
+biketown_map <- biketown_map %>%
+addLegend(
+    position = "bottomright",
+    colors = "blue",
+    labels = "Ride start point"
+  )
 ```
 
 
 c. Using the `lubridate` package, create a variable, `month`, indicating the month of each variable.
+```{r}
+#Creating month variable and assigning colors
+biketown_data_months <- biketown_data %>% 
+  mutate(StartDate = mdy(StartDate)) %>%
+  mutate(EndDate = mdy(EndDate)) %>%
+  mutate(Month = month(StartDate)) %>%
+  mutate(color = Month) %>%
+  mutate(color = recode(color, 
+                        "1" = "blue",
+                        "7" = "green",
+                        "11" = "red"))
+
+color_values <- c("blue" = "#336699", "green" = "#336633", "red" = "#993333")
+biketown_data_months$color_hex <- color_values[biketown_data_months$color]
+```
+
 
 Add this variable to your interactive map using color.  Make sure to include a legend and be mindful of your color palette choice.  Do ride locations vary by months of the year?
+
+Ride locations do not vary significantly, but ride start locations for July tend to be more dispersed than in January and November 2017. November 2017 rides tended to start closer to Northwest Portland, near the Downtown districts.
+
+```{r}
+#Mapping new month variable
+map_month <- leaflet(data = biketown_data_months) %>%
+  addTiles() %>%
+  addCircleMarkers(~StartLongitude, ~StartLatitude, color = ~color_hex, radius = 2, popup = "Start Point") %>%
+  addLegend("bottomright", colors = color_values, labels = c("January", "July", "November"), title = "Months") %>%
+  addProviderTiles("Esri.WorldStreetMap", group = "Esri") %>%
+  addProviderTiles("Esri.WorldImagery", group = "Satellite") %>%
+  addLayersControl(baseGroups = c("Esri", "Satellite"))
+
+#adding title
+map_month <- htmlwidgets::prependContent(map_month, title_bike) 
+map_month
+```
 
 ### Problem 2: Choropleth Maps
 
 For this problem, I want you to practice creating choropleth maps.  Let's grab some data using `tidycensus`.  Remember that you will have to set up an [API key](https://api.census.gov/data/key_signup.html).
 
 ```{r, eval = FALSE}
-api_key <- "insert key"
+#Grabbing API key
+api_key <- "8e0f216f5b912c97f5f2332f72e25119c7d2de06"
 ```
 
 a. Let's grab data on the median gross rent (`B25064_001`) from the American Community Survey for Multnomah county, Oregon.  I want you to do data pulls at three geography resolutions: county subdivision, tract, and block group.
 
+```{r}
+#Making datasets for acs data for each geography resolution
+multnomah_county <- get_acs(geography = "county subdivision", 
+              year = 2021,
+              variables = c(medium_gross_rent = "B25064_001"), 
+              state = "OR",
+              county = "Multnomah",
+              survey = "acs5",
+              output = "wide")
+multnomah_tract <- get_acs(geography = "tract", 
+              year = 2021,
+              variables = c(medium_gross_rent = "B25064_001"), 
+              state = "OR",
+              county = "Multnomah",
+              survey = "acs5",
+              output = "wide")
+multnomah_block <- get_acs(geography = "block group", 
+              year = 2021,
+              variables = c(medium_gross_rent = "B25064_001"), 
+              state = "OR",
+              county = "Multnomah",
+              survey = "acs5",
+              output = "wide")
+```
+
 b. Create three choropleth maps of gross rent, one for each geography resolution.  What information can we glean from these maps?  Also, which resolution seems most useful for this variable?  Justify your answer.
+
+The ranges for the average gross rent increases as the geography divisions decrease, meaning that average gross rents may be geography related and rent may be more homogenous at the block group level than the county subdivision level. For example, the county subdivision rent ranges from 1350-1550, the tract rent ranges 500-2500, and the block group rent ranges from 0-3000. However, there are many block groups that do not have data, and appear shaded gray. Thus, the best resolution is (in my opinion) at the tract level, where there is an interesting and district variation. 
+
+```{r}
+#Combining acs data to shapefile data
+mult_countysub_sf <- county_subdivisions(state = "OR", cb = TRUE)
+mult_tract_sf <- tracts(state = "OR", cb = TRUE)
+mult_block_sf <- block_groups(state = "OR", cb = TRUE)
+multnomah_county <- left_join(multnomah_county, mult_countysub_sf, by = c("GEOID" = "GEOID"))
+multnomah_tract <- left_join(multnomah_tract, mult_tract_sf, by = c("GEOID" = "GEOID"))
+multnomah_block <- left_join(multnomah_block, mult_block_sf, by = c("GEOID" = "GEOID"))
+
+#Making the county chloropleth map
+multnomah_county %>%
+  st_as_sf() %>%
+  ggplot() +
+  geom_sf(aes(fill = medium_gross_rentE)) +
+  scale_fill_gradient(low = "#e5f5f9",
+                      high = "#2ca25f") +
+  labs(title = "Medium Gross Rent of Multomah County Subdivisions", 
+       fill = "Medium Gross Rent in USD") +
+  theme_void() 
+
+#Making the tract chloropleth map
+multnomah_tract %>%
+  st_as_sf() %>%
+  ggplot() +
+  geom_sf(aes(fill = medium_gross_rentE)) +
+  scale_fill_gradient(low = "#e5f5f9",
+                      high = "#2ca25f") +
+  labs(title = "Medium Gross Rent of Multomah County Tracts", 
+       fill = "Medium Gross Rent in USD") +
+  theme_void() 
+
+#Making the block group chloropleth map
+multnomah_block %>%
+  st_as_sf() %>%
+  ggplot() +
+  geom_sf(aes(fill = medium_gross_rentE)) +
+  scale_fill_gradient(low = "#e5f5f9",
+                      high = "#2ca25f") +
+  labs(title = "Medium Gross Rent of Multomah County Block Groups", 
+       fill = "Medium Gross Rent in USD") +
+  theme_void() 
+```
