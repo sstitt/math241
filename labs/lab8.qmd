@@ -33,17 +33,46 @@ knitr::opts_chunk$set(
 
 The `Whickham` data set in the `mosaicData` package includes data on age, smoking, and mortality from a one-in-six survey of the electoral roll in Whickham, a mixed urban and rural district near Newcastle upon Tyne, in the United Kingdom. The survey was conducted in 1972--1974 to study heart disease and thyroid disease. A follow-up on those in the survey was conducted 20 years later. Describe the association between smoking status and mortality in this study. Be sure to consider the role of age as a possible confounding factor.
 
+```{r}
+summary_whickham <- data(Whickham) %>%
+  group_by(smoker) %>%
+  summarize( = mean(age))
+
+```
+
 ## Exercise 2:
 
 a)  Calculate the mean age of birthing people from the `Gestation` data set from the `mosaicData` package.
 
+    The mean age of birthing people is 27.26.
+
 ```{r}
+gestation <- data("Gestation")
+gestation_age <- Gestation %>% 
+  summarize(mean_age = mean(age, na.rm = TRUE))
+gestation_age
 ```
 
 b)  Use the bootstrap to generate and interpret a 95% confidence interval for the mean age of birthing people.
 
-```{r}
+    The 95% confidence interval for the mean age of birthing people is (26.93, 27.58).
 
+```{r}
+bootstrap_means <- Gestation %>%
+  rep_sample_n(size = nrow(Gestation), replace = TRUE, reps = 1000) %>%
+group_by(replicate) %>% 
+  summarize(x_bar = mean(age, na.rm = TRUE)) 
+bootstrap_means %>%
+  slice_head(n = 10)
+
+stats <- bootstrap_means %>%
+  summarize(avg_age = mean(x_bar),
+            se_age = sd(x_bar))
+
+stats <- stats  %>%
+  mutate(lower_bound = avg_age - 2*se_age,
+         upper_bound = avg_age + 2*se_age)
+stats
 ```
 
 ## Exercise 3:
