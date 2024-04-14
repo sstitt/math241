@@ -33,11 +33,14 @@ knitr::opts_chunk$set(
 
 The `Whickham` data set in the `mosaicData` package includes data on age, smoking, and mortality from a one-in-six survey of the electoral roll in Whickham, a mixed urban and rural district near Newcastle upon Tyne, in the United Kingdom. The survey was conducted in 1972--1974 to study heart disease and thyroid disease. A follow-up on those in the survey was conducted 20 years later. Describe the association between smoking status and mortality in this study. Be sure to consider the role of age as a possible confounding factor.
 
-```{r}
-summary_whickham <- data(Whickham) %>%
-  group_by(smoker) %>%
-  summarize( = mean(age))
+The death rate based on the data is on average higher for smokers that are young and middle aged. However, the death rate for older smokers is slightly lower. This study concludes that smoking for youth is bad for health and can lead to an early death. Because the death rates vary based on age, it suggests age may be a confounding factor.
 
+```{r}
+data(Whickham)
+str(Whickham)
+
+# Summary statistics
+summary(Whickham)
 ```
 
 ## Exercise 2:
@@ -80,5 +83,73 @@ stats
 Using data from the `palmerpenguins` package, create a Shiny app that displays measurements from the penguins dataframe. Allow the user to select a species or a gender, and to choose between various attributes on a scatterplot. (Hint: examples of similar apps can be found at the Shiny gallery).
 
 ```{r}
+data(penguins)
+ui <- fluidPage(
+  
+  titlePanel("Palmer Penguins Data Explorer"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(inputId = "species",
+                  label = "Select Species:",
+                  choices = unique(penguins$species),
+                  selected = NULL),
+      
+      selectInput(inputId = "gender",
+                  label = "Select Gender:",
+                  choices = c("Male", "Female"),
+                  selected = NULL),
+      
+      selectInput(inputId = "attribute",
+                  label = "Select Attribute:",
+                  choices = c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g"),
+                  selected = "bill_length_mm"),
+      submitButton("Update Results!")
+    ),
+    
 
+    mainPanel(
+      plotOutput(outputId = "scatterplot")
+    )
+  )
+)
+
+server <- function(input, output) {
+  output$scatterplot <- renderPlot({
+    filtered_penguins <- penguins %>%
+      filter(species == input$species, sex == input$gender)
+    
+    if (nrow(filtered_penguins) == 0) {
+      plot(1, type = "n", main = "No data available")
+      return()
+    }
+    
+    max_x <- max(filtered_penguins$bill_length_mm, na.rm = TRUE)
+    if (!is.finite(max_x) || max_x <= 0) {
+      max_x <- 50  # Set a default maximum value if max_x is not valid
+    }
+    
+    max_y <- max(filtered_penguins$bill_depth_mm, na.rm = TRUE)
+    if (!is.finite(max_y) || max_y <= 0) {
+      max_y <- 50  # Set a default maximum value if max_y is not valid
+    }
+    
+    if (!is.finite(max_x) || !is.finite(max_y)) {
+      plot(1, type = "n", main = "Invalid data")
+      return()
+    }
+    
+    plot(filtered_penguins$bill_length_mm, 
+         filtered_penguins$bill_depth_mm,
+         xlab = "Bill Length (mm)",
+         ylab = "Bill Depth (mm)",
+         main = "Scatterplot of Bill Length vs. Bill Depth",
+         xlim = c(0, max_x),  
+         ylim = c(0, max_y)) 
+  })
+}
+
+
+
+shinyApp(ui = ui, server = server)
 ```
